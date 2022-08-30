@@ -1,3 +1,14 @@
+<?php
+
+$arr= parse_ini_file('./.env');
+$JS_IP = $arr['JS_IP'];
+//print_r($arr);
+//echo file_get_contents('../.env');
+
+
+//exit;
+
+$s= <<<HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -97,7 +108,7 @@
            // activate_logout_js()
         }
 
-        var wsServer = 'ws://118.31.110.29:9501';
+        var wsServer = 'ws://{$JS_IP}:9501';
         var websocket = new WebSocket(wsServer);
         websocket.onopen = function (evt) {
             console.log("Connected to WebSocket server.");
@@ -197,3 +208,6 @@
 ></script>
 </body>
 </html>
+HTML;
+
+echo $s;

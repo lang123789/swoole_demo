@@ -6,9 +6,12 @@
  * Time: 20:32
  */
 
+//$arr= parse_ini_file('../.env');
+
 return [
     'host' => '0.0.0.0',
     'port' => 9501,
+  //  'JS_IP' =>$arr['JS_IP'],
 
 
 
