@@ -134,6 +134,7 @@ $s= <<<HTML
             window.websocket = websocket;
             websocket.onopen = function (evt) {
                 console.log("Connected to WebSocket server.");
+                heartCheck.reset().start();      //心跳检测重置
                 websocket.send("my_id|{$user_id}");
             };
 
@@ -142,7 +143,14 @@ $s= <<<HTML
             };
 
             websocket.onmessage = function (evt) {
-                console.log('Retrieved data from server: ' + evt.data);
+                console.log('从服务器接受的数据 ' + evt.data);
+                // 心跳最前面检测
+                if (evt.data=='pong'){
+                    heartCheck.reset().start();      //心跳检测重置
+                    return;
+                }
+                
+                
                 var user = JSON.parse(evt.data);
                 if (user.type=='my_id'){
                    system_chatWindow(user.message);
@@ -157,6 +165,29 @@ $s= <<<HTML
             websocket.onerror = function (evt, e) {
                 console.log('Error occured: ' + evt.data);
             };
+            
+            var heartCheck = {
+                timeout: 5000,        //单位毫秒，5秒发一次心跳,改成61000，就是61秒就会被服务器自动断掉，
+                                       // 说明，只需这个值大于 服务器的heartbeat_idle_time 与 heartbeat_check_interval 的和，就一定会自动停掉。
+                timeoutObj: null,
+                serverTimeoutObj: null,
+                reset: function(){
+                    clearTimeout(this.timeoutObj);
+                    clearTimeout(this.serverTimeoutObj);
+                    return this;
+                },
+                start: function(){
+                    var self = this;
+                    this.timeoutObj = setTimeout(function(){
+                        //这里发送一个心跳，后端收到后，返回一个心跳消息，
+                        //onmessage拿到返回的心跳就说明连接正常
+                        websocket.send("ping");
+                        console.log("ping")
+                       
+                    }, this.timeout)
+                }
+            };
+            
         }
     </script>
 </head>

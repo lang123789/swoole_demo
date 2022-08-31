@@ -38,6 +38,13 @@ class WebSocketServer
             $this->config['socket']['host'],
             $this->config['socket']['port']
         );
+
+        //v5.0 设置心跳检测
+        $this->server->set(array(
+            'heartbeat_idle_time'      => 30, // 表示一个连接如果60秒内未向服务器发送任何数据，此连接将被强制关闭
+            'heartbeat_check_interval' => 25,  // 表示每25秒遍历一次
+        ));
+
         $this->server->on('open', [$this, 'open']);
         $this->server->on('message', [$this, 'message']);
         $this->server->on('close', [$this, 'close']);
@@ -55,7 +62,12 @@ class WebSocketServer
         $data = $frame->data;
         echo "有消息：".$data."\n";
         //这里用户发来的信息已经分类型了。my_id开头，说明是系统自动从客户端发送的信息，用于识别身份。
-        if (preg_match('#^my_id#', $data)) {
+
+        if (preg_match('#^ping#', $data)) {
+            echo "心跳来了 " .date("Y-m-d H:i:s")."\n";
+            $server->push($frame->fd,'pong');// 返回一个消息，过会他会再次传来。
+
+        } elseif (preg_match('#^my_id#', $data)) {
             $user_id = explode("|", $data)[1];
             $arr = $this->user_all;
             $user_name = isset($arr[$user_id]) ? $arr[$user_id] : '';
