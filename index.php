@@ -103,11 +103,14 @@ $s= <<<HTML
                 if (user_input_area.text().length == 0) {
 
                 } else {
-                    update_chatWindow(user_input_area.text(), me);
+                    var message=user_input_area.text();
+                    update_chatWindow(user_input_area.text(), 1);
                     user_input_area.text("");
                     $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
+                    
+                    // v4.0修改，把消息给服务器。
+                    window.websocket.send("my_message|{$user_id}|"+ message);
                 }
-
             });
 
             // ctrl+enter send message
@@ -125,6 +128,7 @@ $s= <<<HTML
                     incoming_message +
                     '</div>' ;
                 $(".chat-window").append(msg_html);
+                 $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
             }
     </script>
     <script src="./js//logout.js"></script>
@@ -139,6 +143,7 @@ $s= <<<HTML
             
              var wsServer = 'ws://{$JS_IP}:9501';
         var websocket = new WebSocket(wsServer);
+        window.websocket = websocket;
         websocket.onopen = function (evt) {
             console.log("Connected to WebSocket server.");
              websocket.send("my_id|{$user_id}");
@@ -153,9 +158,13 @@ $s= <<<HTML
             var user = JSON.parse(evt.data);
            
             if (user.type=='my_id'){
-              //   alert(111)
+                alert(66);
                system_chatWindow(user.message);
-                //  alert(1112)
+            }
+            // v4.0修改。其他人接受某人的消息广播。
+            if (user.type=='my_message'){
+                alert(555);
+               update_chatWindow(user.message,0);
             }
             
         };
