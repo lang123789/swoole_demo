@@ -82,7 +82,7 @@ class WebSocketServer
             $user = [
                 'fd' => $frame->fd,
                 'user_name' => $user_name,
-                'uesr_id' => $user_id,
+                'user_id' => strval($user_id),
             ];
             echo "有个人刚上线，数据：".json_encode( $user, JSON_UNESCAPED_UNICODE );
             // 放入内存表
@@ -115,34 +115,6 @@ class WebSocketServer
         $this->table->del($fd);
     }
 
-    /**
-     * 推送消息
-     *
-     * @param \swoole_websocket_server $server
-     * @param string $message
-     * @param string $type
-     * @param int $fd
-     */
-    private function pushMessage(\swoole_websocket_server $server, string $message, string $type, int $fd)
-    {
-        $message = htmlspecialchars($message);
-        $datetime = date('Y-m-d H:i:s', time());
-        $user = $this->table->get($fd);
-
-        foreach ($this->table as $item) {
-            // 自己不用发送
-            if ($item['fd'] == $fd) {
-                continue;
-            }
-
-            $server->push($item['fd'], json_encode([
-                'type' => $type,
-                'message' => $message,
-                'datetime' => $datetime,
-                'user' => $user
-            ]));
-        }
-    }
 
 
     /**
@@ -154,7 +126,7 @@ class WebSocketServer
         $this->table->column('fd', \swoole_table::TYPE_INT);
 
         $this->table->column('user_name', \swoole_table::TYPE_STRING, 255);
-        $this->table->column('user_id', \swoole_table::TYPE_INT, 255);
+        $this->table->column('user_id', \swoole_table::TYPE_STRING, 255);
 
         $this->table->create();
     }
