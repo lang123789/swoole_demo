@@ -48,27 +48,13 @@ $s= <<<HTML
     <script src="./js/login.js"></script>
     <script>
         function activate_chat_js() {
-
-
-
-            // left side
-            $('.other-users-wrapper .other-user-wrapper').each(function () {
-                var _this = this;
-                var chatter_name = $(_this.children[1]).text();
-                $(_this).click(function () {
-                    $('.other-users-wrapper .other-user-wrapper').each(function () {
-                        $(this).removeClass("current-select");
-                    })
-                    $(_this).addClass("current-select");
-                    $('.current-chatter').text(chatter_name)
-                })
-            })
+            
+           
             // right side
             const me = 1;
             const chatter = 0;
 
-            
-
+            // 这是每个人自己发消息。子程序1。
             function update_chatWindow(incoming_message, from) {
                 if (from === 1) {
                     var msg_html = my_message_html(incoming_message);
@@ -78,9 +64,18 @@ $s= <<<HTML
                 $(".chat-window").append(msg_html);
             }
             
-           
+            // 这是自己发消息。子程序2。
+            function my_message_html(incoming_message) {
+                var newMessage = '<div class="me-wrapper">' +
+                    '<div class="me-message container">' + incoming_message + '</div>' +
+                    '<div class="me-avatar">' +
+                    '我自己' +
+                    '</div></div>';
+                return newMessage;
+            }
 
             // click btn to send message
+            // 这也是每个人自己发消息。最开始点击。
             $("#btn-send-message").click(function () {
                 var user_input_area = $("#user-input-value");
                 if (user_input_area.text().length == 0) {
@@ -97,6 +92,7 @@ $s= <<<HTML
             });
 
             // ctrl+enter send message
+            // 这也是每个人自己发消息，用回车键。
             $('#user-input-value').keydown(function (e) {
                 if ((event.keyCode == 10 || event.keyCode == 13)) {
                     $('#btn-send-message').trigger("click");
@@ -106,93 +102,62 @@ $s= <<<HTML
             });
         }
         
-        function my_message_html(incoming_message) {
-                var newMessage = '<div class="me-wrapper">' +
-                    '<div class="me-message container">' + incoming_message + '</div>' +
-                    '<div class="me-avatar">' +
-                    '我自己' +
-                    '</div></div>';
-                return newMessage;
-            }
-
-            function chatter_message_html2(incoming_message,from) {
-                var newMessage = '<div class="current-chatter-wrapper">' +
-                    '<div class="chatter-avatar">' +
-                    from +
-                    '</div>' +
-                    '<div class="chatter-message container">' + incoming_message + '</div>' +
-                    '</div>';
-                return newMessage;
-            }
-        
-        
-         function system_chatWindow(incoming_message) {
-                var msg_html = '<div class="system-message">' +
-                    incoming_message +
-                    '</div>' ;
-                $(".chat-window").append(msg_html);
-                 $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
-            }
+        // 这是显示在中间的系统消息。由服务器推送。
+        function system_chatWindow(incoming_message) {
+            var msg_html = '<div class="system-message">' + incoming_message + '</div>' ;
+            $(".chat-window").append(msg_html);
+            $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
+        }
             
-            // v4.0 ,这是被onmessage函数调用的方法，上面那个update被限制了作用域。
-            function update_chatWindow2(incoming_message, from) {
-               
-                    var msg_html = chatter_message_html2(incoming_message,from);
+        // v4.0 ,这是被onmessage函数调用的方法，
+        // 这是其他人发的消息，广播到每个机器。
+        function update_chatWindow2(incoming_message, from) {
+            var msg_html = '<div class="current-chatter-wrapper">' +
+                '<div class="chatter-avatar">' +
+                from +
+                '</div>' +
+                '<div class="chatter-message container">' + incoming_message + '</div>' +
+                '</div>';
                 
-                $(".chat-window").append(msg_html);
-                $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
-            }
+            $(".chat-window").append(msg_html);
+            $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
+        }
             
     </script>
     <script src="./js//logout.js"></script>
     <script >
-    
-     
-    
         window.onload = function(){
-
             activate_chat_js();
-           
-            
-             var wsServer = 'ws://{$JS_IP}:9501';
-        var websocket = new WebSocket(wsServer);
-        window.websocket = websocket;
-        websocket.onopen = function (evt) {
-            console.log("Connected to WebSocket server.");
-             websocket.send("my_id|{$user_id}");
-        };
 
-        websocket.onclose = function (evt) {
-            console.log("Disconnected");
-        };
+            var wsServer = 'ws://{$JS_IP}:9501';
+            var websocket = new WebSocket(wsServer);
+            window.websocket = websocket;
+            websocket.onopen = function (evt) {
+                console.log("Connected to WebSocket server.");
+                websocket.send("my_id|{$user_id}");
+            };
 
-        websocket.onmessage = function (evt) {
-            console.log('Retrieved data from server: ' + evt.data);
-            var user = JSON.parse(evt.data);
-           
-            if (user.type=='my_id'){
-                
-               system_chatWindow(user.message);
-            }
-            // v4.0修改。其他人接受某人的消息广播。
-            if (user.type=='my_message'){
-               update_chatWindow2(user.message, user.from_user_name );
-            }
-            
-        };
+            websocket.onclose = function (evt) {
+                console.log("Disconnected");
+            };
 
-        websocket.onerror = function (evt, e) {
-            console.log('Error occured: ' + evt.data);
-        };
+            websocket.onmessage = function (evt) {
+                console.log('Retrieved data from server: ' + evt.data);
+                var user = JSON.parse(evt.data);
+                if (user.type=='my_id'){
+                   system_chatWindow(user.message);
+                }
+                // v4.0修改。其他人接受某人的消息广播。
+                if (user.type=='my_message'){
+                    update_chatWindow2(user.message, user.from_user_name );
+                }
             
-           
-           // alert(2)
-           // activate_logout_js()
+            };
+
+            websocket.onerror = function (evt, e) {
+                console.log('Error occured: ' + evt.data);
+            };
         }
-
-      
-
-
     </script>
 </head>
 <body>
@@ -210,25 +175,6 @@ $s= <<<HTML
 
         </div>
         <div class="chat-window container">
-
-            <div class="system-message">2019年8月20日 14:30 </div>
-
-            <div class="current-chatter-wrapper">
-                <div class="chatter-avatar">
-                    管理员
-                </div>
-                <div class="chatter-message container">Hello, how are you?</div>
-            </div>
-
-
-            <div class="me-wrapper">
-                <div class="me-message container">拟鹤拟鹤拟拟鹤拟鹤</div>
-                <div class="me-avatar">
-                    我自己
-                </div>
-            </div>
-            
-
 
         </div>
         <div class="user-function" style="visibility:hidden">
