@@ -146,6 +146,11 @@
   color: #ffffff;
   font-size: 70%;
 }
+
+.system-message{
+  clear:both;
+}
+
 .chat-window::-webkit-scrollbar {
   width: 10px;
 }

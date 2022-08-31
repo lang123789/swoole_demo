@@ -1,5 +1,6 @@
 <?php
-require __DIR__ .
+require __DIR__ .'/vendor/autoload.php';
+
 $arr= parse_ini_file('./.env');
 $JS_IP = $arr['JS_IP'];
 
@@ -8,7 +9,7 @@ if (!$user_id) {
     exit("请填写用户id, 网址后面加 ?id=整数");
 }
 
-$config = Config::getInstance();
+$config = \App\WebSocket\Config::getInstance();
 //假定这是数据库的查询结果
 $user_all = $arr =  $config['socket']['user_all'];
 
@@ -22,6 +23,7 @@ if (!$user_name){
     exit("请求错误");
 }
 
+$random = time();
 
 
 $s= <<<HTML
@@ -41,7 +43,7 @@ $s= <<<HTML
     />
     <link rel="stylesheet" href="./css/custom.css"/>
     <link rel="stylesheet" href="./css/login.css"/>
-    <link rel="stylesheet" href="./css/chat.css"/>
+    <link rel="stylesheet" href="./css/chat.css?{$random}"/>
     <script src="http://lib.sinaapp.com/js/jquery/1.8/jquery.min.js"></script>
     <script src="./js/login.js"></script>
     <script>
@@ -92,6 +94,8 @@ $s= <<<HTML
                 }
                 $(".chat-window").append(msg_html);
             }
+            
+           
 
             // click btn to send message
             $("#btn-send-message").click(function () {
@@ -115,14 +119,29 @@ $s= <<<HTML
                 }
             });
         }
+        
+         function system_chatWindow(incoming_message) {
+                var msg_html = '<div class="system-message">' +
+                    incoming_message +
+                    '</div>' ;
+                $(".chat-window").append(msg_html);
+            }
     </script>
     <script src="./js//logout.js"></script>
     <script >
     
-      var wsServer = 'ws://{$JS_IP}:9501';
+     
+    
+        window.onload = function(){
+
+            activate_chat_js();
+           
+            
+             var wsServer = 'ws://{$JS_IP}:9501';
         var websocket = new WebSocket(wsServer);
         websocket.onopen = function (evt) {
             console.log("Connected to WebSocket server.");
+             websocket.send("my_id|{$user_id}");
         };
 
         websocket.onclose = function (evt) {
@@ -131,16 +150,22 @@ $s= <<<HTML
 
         websocket.onmessage = function (evt) {
             console.log('Retrieved data from server: ' + evt.data);
+            var user = JSON.parse(evt.data);
+           
+            if (user.type=='my_id'){
+              //   alert(111)
+               system_chatWindow(user.message);
+                //  alert(1112)
+            }
+            
         };
 
         websocket.onerror = function (evt, e) {
             console.log('Error occured: ' + evt.data);
         };
-    
-        window.onload = function(){
-
-            activate_chat_js();
-            websocket.send("my_id|{$user_id}");
+            
+           
+           // alert(2)
            // activate_logout_js()
         }
 
@@ -160,12 +185,12 @@ $s= <<<HTML
 
     <div class="right-side">
         <div class="header">
-            <div class="current-chatter">swoole聊天室</div>
+            <div class="current-chatter"> <div class="div1">聊天室</div> </div>
 
         </div>
         <div class="chat-window container">
 
-            <div class="system-message">2019年8月20日 14:30</div>
+            <div class="system-message">2019年8月20日 14:30 </div>
 
             <div class="current-chatter-wrapper">
                 <div class="chatter-avatar">
@@ -181,6 +206,7 @@ $s= <<<HTML
                     我自己
                 </div>
             </div>
+            
 
 
         </div>

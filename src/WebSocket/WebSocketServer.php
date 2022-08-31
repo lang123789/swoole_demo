@@ -65,7 +65,7 @@ class WebSocketServer
 
         if (preg_match( '#my_id|#', $data )) {
 
-            $user_id=$data;
+            $user_id= explode("|",$data)[1] ;
             $arr=$this->user_all;
 
 
@@ -90,7 +90,7 @@ class WebSocketServer
 
             $server->push($frame->fd, json_encode([
                 'type' => 'my_id',
-                'message' => $user_name,
+                'message' => '欢迎您，'.$user_name,
             ]));
         }
 
@@ -107,7 +107,12 @@ class WebSocketServer
      */
     public function close(\swoole_websocket_server $server, int $fd)
     {
+        $user = $this->table->get($fd);
 
+        echo "有人下线，数据：".json_encode( $user, JSON_UNESCAPED_UNICODE );
+
+       // $this->pushMessage($server, "{$user['name']}离开聊天室", 'close', $fd);
+        $this->table->del($fd);
     }
 
     /**
