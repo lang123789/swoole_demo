@@ -67,24 +67,7 @@ $s= <<<HTML
             const me = 1;
             const chatter = 0;
 
-            function my_message_html(incoming_message) {
-                var newMessage = '<div class="me-wrapper">' +
-                    '<div class="me-message container">' + incoming_message + '</div>' +
-                    '<div class="me-avatar">' +
-                    '我自己' +
-                    '</div></div>';
-                return newMessage;
-            }
-
-            function chatter_message_html(incoming_message) {
-                var newMessage = '<div class="current-chatter-wrapper">' +
-                    '<div class="chatter-avatar">' +
-                    '管理员' +
-                    '</div>' +
-                    '<div class="chatter-message container">' + incoming_message + '</div>' +
-                    '</div>';
-                return newMessage;
-            }
+            
 
             function update_chatWindow(incoming_message, from) {
                 if (from === 1) {
@@ -123,6 +106,26 @@ $s= <<<HTML
             });
         }
         
+        function my_message_html(incoming_message) {
+                var newMessage = '<div class="me-wrapper">' +
+                    '<div class="me-message container">' + incoming_message + '</div>' +
+                    '<div class="me-avatar">' +
+                    '我自己' +
+                    '</div></div>';
+                return newMessage;
+            }
+
+            function chatter_message_html2(incoming_message,from) {
+                var newMessage = '<div class="current-chatter-wrapper">' +
+                    '<div class="chatter-avatar">' +
+                    from +
+                    '</div>' +
+                    '<div class="chatter-message container">' + incoming_message + '</div>' +
+                    '</div>';
+                return newMessage;
+            }
+        
+        
          function system_chatWindow(incoming_message) {
                 var msg_html = '<div class="system-message">' +
                     incoming_message +
@@ -130,6 +133,16 @@ $s= <<<HTML
                 $(".chat-window").append(msg_html);
                  $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
             }
+            
+            // v4.0 ,这是被onmessage函数调用的方法，上面那个update被限制了作用域。
+            function update_chatWindow2(incoming_message, from) {
+               
+                    var msg_html = chatter_message_html2(incoming_message,from);
+                
+                $(".chat-window").append(msg_html);
+                $('.chat-window').scrollTop($('.chat-window')[0].scrollHeight);
+            }
+            
     </script>
     <script src="./js//logout.js"></script>
     <script >
@@ -158,13 +171,12 @@ $s= <<<HTML
             var user = JSON.parse(evt.data);
            
             if (user.type=='my_id'){
-                alert(66);
+                
                system_chatWindow(user.message);
             }
             // v4.0修改。其他人接受某人的消息广播。
             if (user.type=='my_message'){
-                alert(555);
-               update_chatWindow(user.message,0);
+               update_chatWindow2(user.message, user.from_user_name );
             }
             
         };

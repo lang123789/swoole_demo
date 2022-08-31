@@ -53,8 +53,9 @@ class WebSocketServer
     {
 
         $data = $frame->data;
+        echo "有消息：".$data."\n";
         //这里用户发来的信息已经分类型了。my_id开头，说明是系统自动从客户端发送的信息，用于识别身份。
-        if (preg_match('#^my_id|#', $data)) {
+        if (preg_match('#^my_id#', $data)) {
             $user_id = explode("|", $data)[1];
             $arr = $this->user_all;
             $user_name = isset($arr[$user_id]) ? $arr[$user_id] : '';
@@ -70,6 +71,7 @@ class WebSocketServer
                 'user_id' => strval($user_id),
             ];
             echo "有个人刚上线，数据：" . json_encode($user, JSON_UNESCAPED_UNICODE);
+            echo "\n";
             // 放入内存表
             $this->table->set($frame->fd, $user);
 
@@ -87,7 +89,7 @@ class WebSocketServer
                     ]));
                 }
             }
-        }elseif (preg_match('#^my_message|#', $data)) {
+        }elseif (preg_match('#^my_message#', $data)) {
             $user_id = explode("|", $data)[1];
             $message = explode("|", $data)[2];
 
@@ -100,17 +102,20 @@ class WebSocketServer
                 return;
             }
             echo   "有人发消息，内容：" . $message;
+            echo "\n";
 
-//            // 通知其他人 ，进行广播
-//            foreach ($this->table as $row) {
-//                if ($row['fd'] != $frame->fd) {
-//                    echo   "推送消息：" . $message;
-//                    $server->push($row['fd'], json_encode([
-//                        'type' => 'my_message',
-//                        'message' => $message,
-//                    ]));
-//                }
-//            }
+            // 通知其他人 ，进行广播
+            foreach ($this->table as $row) {
+                if ($row['fd'] != $frame->fd) {
+                    echo   "推送消息：" . $message."给fd：" . $row['fd'] ;
+                    $server->push($row['fd'], json_encode([
+                        'type' => 'my_message',
+                        'message' => $message,
+                        'from_user_name' => $user_name,
+
+                    ]));
+                }
+            }
         }
     }
 
