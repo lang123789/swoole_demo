@@ -2,11 +2,28 @@
 
 $arr= parse_ini_file('./.env');
 $JS_IP = $arr['JS_IP'];
-//print_r($arr);
-//echo file_get_contents('../.env');
+
+$user_id = $_REQUEST['id'];
+if (!$user_id) {
+    exit("请填写用户id, 网址后面加 ?id=整数");
+}
+
+//这里假定在查数据库。
+$arr=[
+    1=>'管理员',
+    2=>'消费者2',
+    3=>'消费者3',
+    4=>'消费者4',
+    5=>'消费者5',
+
+];
+
+$user_id=intval($user_id);
+if ($user_id<1 || $user_id>5){
+    exit("用户id不合法");
+}
 
 
-//exit;
 
 $s= <<<HTML
 <!DOCTYPE html>

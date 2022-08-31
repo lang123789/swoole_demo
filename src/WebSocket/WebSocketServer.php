@@ -43,7 +43,7 @@ class WebSocketServer
 
     public function open(\swoole_websocket_server $server, \swoole_http_request $request)
     {
-        echo "有人上线";
+        echo "有人上线\n";
 
     }
 
