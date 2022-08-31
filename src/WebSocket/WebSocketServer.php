@@ -20,11 +20,16 @@ class WebSocketServer
     private $table;
     private $server;
 
+    private $user_all;
+
     public function __construct()
     {
 
         // 实例化配置
+        // 内存表 实现进程间共享数据，也可以使用redis替代
+        $this->createTable();
         $this->config = Config::getInstance();
+        $this->user_all = $this->config['socket']['user_all'];
     }
 
     public function run()
@@ -52,6 +57,44 @@ class WebSocketServer
     public function message(\swoole_websocket_server $server, \swoole_websocket_frame $frame)
     {
 
+        $data = $frame->data;
+        //这里用户发来的信息已经分类型了。my_id开头，说明是系统自动从客户端发送的信息，用于识别身份。
+
+
+
+
+        if (preg_match( '#my_id|#', $data )) {
+
+            $user_id=$data;
+            $arr=$this->user_all;
+
+
+            $user_name = isset( $arr[$user_id] )? $arr[$user_id] :'';
+            if (!$user_name){
+                //如果用户不存在，则w我直接关闭连接。
+                echo "非法连接。用户id:".$user_id;
+                $server->close($frame->fd);
+
+
+               return;
+            }
+
+            $user = [
+                'fd' => $frame->fd,
+                'user_name' => $user_name,
+                'uesr_id' => $user_id,
+            ];
+            echo "有个人刚上线，数据：".json_encode( $user, JSON_UNESCAPED_UNICODE );
+            // 放入内存表
+            $this->table->set($frame->fd, $user);
+
+            $server->push($frame->fd, json_encode([
+                'type' => 'my_id',
+                'message' => $user_name,
+            ]));
+        }
+
+
     }
 
 
@@ -65,6 +108,59 @@ class WebSocketServer
     public function close(\swoole_websocket_server $server, int $fd)
     {
 
+    }
+
+    /**
+     * 推送消息
+     *
+     * @param \swoole_websocket_server $server
+     * @param string $message
+     * @param string $type
+     * @param int $fd
+     */
+    private function pushMessage(\swoole_websocket_server $server, string $message, string $type, int $fd)
+    {
+        $message = htmlspecialchars($message);
+        $datetime = date('Y-m-d H:i:s', time());
+        $user = $this->table->get($fd);
+
+        foreach ($this->table as $item) {
+            // 自己不用发送
+            if ($item['fd'] == $fd) {
+                continue;
+            }
+
+            $server->push($item['fd'], json_encode([
+                'type' => $type,
+                'message' => $message,
+                'datetime' => $datetime,
+                'user' => $user
+            ]));
+        }
+    }
+
+
+    /**
+     * 创建内存表
+     */
+    private function createTable()
+    {
+        $this->table = new \swoole_table(1024);
+        $this->table->column('fd', \swoole_table::TYPE_INT);
+
+        $this->table->column('user_name', \swoole_table::TYPE_STRING, 255);
+        $this->table->column('user_id', \swoole_table::TYPE_INT, 255);
+
+        $this->table->create();
+    }
+
+    private function allUser()
+    {
+        $users = [];
+        foreach ($this->table as $row) {
+            $users[] = $row;
+        }
+        return $users;
     }
 
 

@@ -1,5 +1,5 @@
 <?php
-
+require __DIR__ .
 $arr= parse_ini_file('./.env');
 $JS_IP = $arr['JS_IP'];
 
@@ -8,19 +8,18 @@ if (!$user_id) {
     exit("请填写用户id, 网址后面加 ?id=整数");
 }
 
-//这里假定在查数据库。
-$arr=[
-    1=>'管理员',
-    2=>'消费者2',
-    3=>'消费者3',
-    4=>'消费者4',
-    5=>'消费者5',
-
-];
+$config = Config::getInstance();
+//假定这是数据库的查询结果
+$user_all = $arr =  $config['socket']['user_all'];
 
 $user_id=intval($user_id);
 if ($user_id<1 || $user_id>5){
     exit("用户id不合法");
+}
+
+$user_name = isset( $arr[$user_id] )? $arr[$user_id] :'';
+if (!$user_name){
+    exit("请求错误");
 }
 
 
@@ -119,13 +118,8 @@ $s= <<<HTML
     </script>
     <script src="./js//logout.js"></script>
     <script >
-        window.onload = function(){
-
-            activate_chat_js();
-           // activate_logout_js()
-        }
-
-        var wsServer = 'ws://{$JS_IP}:9501';
+    
+      var wsServer = 'ws://{$JS_IP}:9501';
         var websocket = new WebSocket(wsServer);
         websocket.onopen = function (evt) {
             console.log("Connected to WebSocket server.");
@@ -142,6 +136,15 @@ $s= <<<HTML
         websocket.onerror = function (evt, e) {
             console.log('Error occured: ' + evt.data);
         };
+    
+        window.onload = function(){
+
+            activate_chat_js();
+            websocket.send("my_id|{$user_id}");
+           // activate_logout_js()
+        }
+
+      
 
 
     </script>
