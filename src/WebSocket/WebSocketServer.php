@@ -21,6 +21,7 @@ class WebSocketServer
     private $server;
 
     private $user_all;
+    private $pool;
 
     public function __construct()
     {
@@ -30,6 +31,42 @@ class WebSocketServer
         $this->createTable();
         $this->config = Config::getInstance();
         $this->user_all = $this->config['socket']['user_all'];
+
+        $this->create_mysql_pool();
+
+// 这里有两张表，1用户表，2聊天记录表。
+//        CREATE TABLE users (
+//        id int(11) NOT NULL AUTO_INCREMENT,
+//  user_name varchar(255)  NOT NULL DEFAULT '' comment '用户名称',
+//  email varchar(255)    NOT NULL DEFAULT '' comment 'email',
+//  created_at timestamp null default current_timestamp,
+//  PRIMARY KEY (`id`)
+//) ENGINE=InnoDB ;
+//
+//CREATE TABLE messages (
+//        id int(11) NOT NULL AUTO_INCREMENT,
+//  user_id int not null default 0 comment '用户id',
+//  content varchar(3000)  NOT NULL DEFAULT '' comment '聊天内容',
+//  created_at timestamp null default current_timestamp,
+//  PRIMARY KEY (`id`),
+//  index user_id(user_id)
+//) ENGINE=InnoDB ;
+
+
+    }
+
+    private function create_mysql_pool(){
+        \Swoole\Runtime::enableCoroutine();
+        $config = new \Swoole\Database\PDOConfig(
+
+        );
+        $config->withHost($this->config['mysql']['host'])
+            ->withPort($this->config['mysql']['port'])
+            ->withDbName($this->config['mysql']['db_name'])
+            ->withCharset($this->config['mysql']['charset'])
+            ->withUsername($this->config['mysql']['username'])
+            ->withPassword($this->config['mysql']['password']);
+        $this->pool = new \Swoole\Database\PDOPool( $config);
     }
 
     public function run()
