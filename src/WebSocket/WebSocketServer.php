@@ -30,6 +30,8 @@ class WebSocketServer
         // 内存表 实现进程间共享数据，也可以使用redis替代
         $this->createTable();
         $this->config = Config::getInstance();
+        $this->mysql_config = Config::getInstance();
+
         $this->user_all = $this->config['socket']['user_all'];
 
         $this->create_mysql_pool();
@@ -55,18 +57,17 @@ class WebSocketServer
 
     }
 
-    private function create_mysql_pool(){
+    private function create_mysql_pool()
+    {
         \Swoole\Runtime::enableCoroutine();
-        $config = new \Swoole\Database\PDOConfig(
-
-        );
-        $config->withHost($this->config['mysql']['host'])
-            ->withPort($this->config['mysql']['port'])
-            ->withDbName($this->config['mysql']['db_name'])
-            ->withCharset($this->config['mysql']['charset'])
-            ->withUsername($this->config['mysql']['username'])
-            ->withPassword($this->config['mysql']['password']);
-        $this->pool = new \Swoole\Database\PDOPool( $config);
+        $config = new \Swoole\Database\PDOConfig();
+        $config->withHost($this->mysql_config['mysql']['host'])
+            ->withPort($this->mysql_config['mysql']['port'])
+            ->withDbName($this->mysql_config['mysql']['db_name'])
+            ->withCharset($this->mysql_config['mysql']['charset'])
+            ->withUsername($this->mysql_config['mysql']['username'])
+            ->withPassword($this->mysql_config['mysql']['password']);
+        $this->pool = new \Swoole\Database\PDOPool($config);
     }
 
     public function run()
@@ -78,7 +79,7 @@ class WebSocketServer
 
         //v5.0 设置心跳检测
         $this->server->set(array(
-            'heartbeat_idle_time'      => 30, // 表示一个连接如果60秒内未向服务器发送任何数据，此连接将被强制关闭
+            'heartbeat_idle_time' => 30, // 表示一个连接如果60秒内未向服务器发送任何数据，此连接将被强制关闭
             'heartbeat_check_interval' => 25,  // 表示每25秒遍历一次
         ));
 
@@ -97,12 +98,12 @@ class WebSocketServer
     {
 
         $data = $frame->data;
-        echo "有消息：".$data."\n";
+        echo "有消息：" . $data . "\n";
         //这里用户发来的信息已经分类型了。my_id开头，说明是系统自动从客户端发送的信息，用于识别身份。
 
         if (preg_match('#^ping#', $data)) {
-            echo "心跳来了 " .date("Y-m-d H:i:s")."\n";
-            $server->push($frame->fd,'pong');// 返回一个消息，过会他会再次传来。
+            echo "心跳来了 " . date("Y-m-d H:i:s") . "\n";
+            $server->push($frame->fd, 'pong');// 返回一个消息，过会他会再次传来。
 
         } elseif (preg_match('#^my_id#', $data)) {
             $user_id = explode("|", $data)[1];
@@ -138,7 +139,7 @@ class WebSocketServer
                     ]));
                 }
             }
-        }elseif (preg_match('#^my_message#', $data)) {
+        } elseif (preg_match('#^my_message#', $data)) {
             $user_id = explode("|", $data)[1];
             $message = explode("|", $data)[2];
 
@@ -150,13 +151,13 @@ class WebSocketServer
                 $server->close($frame->fd);
                 return;
             }
-            echo   "有人发消息，内容：" . $message;
+            echo "有人发消息，内容：" . $message;
             echo "\n";
 
             // 通知其他人 ，进行广播
             foreach ($this->table as $row) {
                 if ($row['fd'] != $frame->fd) {
-                    echo   "推送消息：" . $message."给fd：" . $row['fd'] ;
+                    echo "推送消息：" . $message . "给fd：" . $row['fd'];
                     $server->push($row['fd'], json_encode([
                         'type' => 'my_message',
                         'message' => $message,

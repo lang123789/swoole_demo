@@ -19,13 +19,11 @@ class Config implements \ArrayAccess
         $this->path = __DIR__ . '/../../config/';
     }
 
-    // 单例模式
+    // 式
     public static function getInstance()
     {
-        if (!self::$instance) {
-            self::$instance = new self();
-        }
-        return self::$instance;
+
+        return new self();
     }
 
     public function offsetSet($offset, $value)
