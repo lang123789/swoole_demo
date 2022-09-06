@@ -25,7 +25,7 @@ class WebSocketServer
     public function __construct()
     {
 
-        // 实例化配置
+        // 实例化配置11
         // 内存表 实现进程间共享数据，也可以使用redis替代
         $this->createTable();
         $this->config = Config::getInstance();
