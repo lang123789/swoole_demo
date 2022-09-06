@@ -55,6 +55,12 @@ class WebSocketServer
 //) ENGINE=InnoDB ;
 
 
+//        insert into users(id,user_name)values (1,'管理员');
+//insert into users(id,user_name)values (2,'用户2');
+//insert into users(id,user_name)values (3,'用户3');
+
+
+
     }
 
     private function create_mysql_pool()
@@ -69,6 +75,8 @@ class WebSocketServer
             ->withPassword($this->mysql_config['mysql']['password']);
         $this->pool = new \Swoole\Database\PDOPool($config);
     }
+
+
 
     public function run()
     {

@@ -1,26 +1,43 @@
 <?php
 require __DIR__ .'/vendor/autoload.php';
 
+use Medoo\Medoo;
+
 $arr= parse_ini_file('./.env');
 $JS_IP = $arr['JS_IP'];
 
-$user_id = $_REQUEST['id'];
+$user_id = intval( $_REQUEST['id']);
 if (!$user_id) {
     exit("请填写用户id, 网址后面加 ?id=整数");
 }
 
-$config = \App\WebSocket\Config::getInstance();
+//$config = \App\WebSocket\Config::getInstance();
 //假定这是数据库的查询结果
-$user_all = $arr =  $config['socket']['user_all'];
+$config = require __DIR__ .'/config/mysql.php';
 
-$user_id=intval($user_id);
-if ($user_id<1 || $user_id>5){
-    exit("用户id不合法");
-}
 
-$user_name = isset( $arr[$user_id] )? $arr[$user_id] :'';
-if (!$user_name){
-    exit("请求错误");
+$database = new Medoo([
+    'type' => 'mysql',
+    'host' =>  $config['host'],
+    'database' => $config['db_name'],
+    'username' => $config['username'],
+    'password' => $config['password'],
+
+    // [optional]
+    'charset' => $config['charset'],
+
+    'port' => $config['port'],
+]);
+
+$datas = $database->select("users", [
+    "id",
+
+], [
+    "id[=]" => $user_id
+]);
+
+if (empty($datas)){
+    die('非法用户');
 }
 
 $random = time();
