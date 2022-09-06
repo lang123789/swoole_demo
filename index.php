@@ -1,7 +1,7 @@
 <?php
 require __DIR__ .'/vendor/autoload.php';
 
-use Medoo\Medoo;
+
 
 $arr= parse_ini_file('./.env');
 $JS_IP = $arr['JS_IP'];
@@ -15,26 +15,10 @@ if (!$user_id) {
 //假定这是数据库的查询结果
 $config = require __DIR__ .'/config/mysql.php';
 
+$db = new \Mix\Database\Database('mysql:host='. $config['host'] .';port='. $config['port']
+    .';charset='. $config['charset'] .';dbname='.$config['db_name'], $config['username'], $config['password']);
 
-$database = new Medoo([
-    'type' => 'mysql',
-    'host' =>  $config['host'],
-    'database' => $config['db_name'],
-    'username' => $config['username'],
-    'password' => $config['password'],
-
-    // [optional]
-    'charset' => $config['charset'],
-
-    'port' => $config['port'],
-]);
-
-$datas = $database->select("users", [
-    "id",
-
-], [
-    "id[=]" => $user_id
-]);
+$datas = $db->table('users')->where('id = ?', $user_id)->first();
 
 if (empty($datas)){
     die('非法用户');

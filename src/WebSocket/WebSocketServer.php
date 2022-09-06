@@ -21,7 +21,8 @@ class WebSocketServer
     private $server;
 
     private $user_all;
-    private $pool;
+    private $db;
+//    private $db_help;
 
     public function __construct()
     {
@@ -36,44 +37,22 @@ class WebSocketServer
 
         $this->create_mysql_pool();
 
-// 这里有两张表，1用户表，2聊天记录表。
-//        CREATE TABLE users (
-//        id int(11) NOT NULL AUTO_INCREMENT,
-//  user_name varchar(255)  NOT NULL DEFAULT '' comment '用户名称',
-//  email varchar(255)    NOT NULL DEFAULT '' comment 'email',
-//  created_at timestamp null default current_timestamp,
-//  PRIMARY KEY (`id`)
-//) ENGINE=InnoDB ;
-//
-//CREATE TABLE messages (
-//        id int(11) NOT NULL AUTO_INCREMENT,
-//  user_id int not null default 0 comment '用户id',
-//  content varchar(3000)  NOT NULL DEFAULT '' comment '聊天内容',
-//  created_at timestamp null default current_timestamp,
-//  PRIMARY KEY (`id`),
-//  index user_id(user_id)
-//) ENGINE=InnoDB ;
-
-
-//        insert into users(id,user_name)values (1,'管理员');
-//insert into users(id,user_name)values (2,'用户2');
-//insert into users(id,user_name)values (3,'用户3');
-
-
-
     }
 
     private function create_mysql_pool()
     {
-        \Swoole\Runtime::enableCoroutine();
-        $config = new \Swoole\Database\PDOConfig();
-        $config->withHost($this->mysql_config['mysql']['host'])
-            ->withPort($this->mysql_config['mysql']['port'])
-            ->withDbName($this->mysql_config['mysql']['db_name'])
-            ->withCharset($this->mysql_config['mysql']['charset'])
-            ->withUsername($this->mysql_config['mysql']['username'])
-            ->withPassword($this->mysql_config['mysql']['password']);
-        $this->pool = new \Swoole\Database\PDOPool($config);
+
+        $maxOpen = 50;        // 最大开启连接数
+        $maxIdle = 20;        // 最大闲置连接数
+        $maxLifetime = 3600;  // 连接的最长生命周期
+        $waitTimeout = 0.0;   // 从池获取连接等待的时间, 0为一直等待
+        $config = $this->mysql_config['mysql'];
+        $this->db = new \Mix\Database\Database('mysql:host='. $config['host'] .';port='. $config['port']
+            .';charset='. $config['charset'] .';dbname='.$config['db_name'], $config['username'], $config['password']);
+
+        $this->db->startPool($maxOpen, $maxIdle, $maxLifetime, $waitTimeout);
+        \Swoole\Runtime::enableCoroutine(); // 必须放到最后，防止触发协程调度导致异常
+
     }
 
 
@@ -106,29 +85,33 @@ class WebSocketServer
     {
 
         $data = $frame->data;
-        echo "有消息：" . $data . "\n";
+        //echo "有消息：" . $data . "\n";
         //这里用户发来的信息已经分类型了。my_id开头，说明是系统自动从客户端发送的信息，用于识别身份。
 
         if (preg_match('#^ping#', $data)) {
-            echo "心跳来了 " . date("Y-m-d H:i:s") . "\n";
+           // echo "心跳来了 " . date("Y-m-d H:i:s") . "\n";
             $server->push($frame->fd, 'pong');// 返回一个消息，过会他会再次传来。
 
         } elseif (preg_match('#^my_id#', $data)) {
             $user_id = explode("|", $data)[1];
-            $arr = $this->user_all;
-            $user_name = isset($arr[$user_id]) ? $arr[$user_id] : '';
-            if (!$user_name) {
+            $datas = $this->db->table('users')->where('id = ?', $user_id)->first();
+
+            if (!$datas) {
                 //如果用户不存在，则w我直接关闭连接。
                 echo "非法连接。用户id:" . $user_id;
                 $server->close($frame->fd);
                 return;
             }
+            $user_name = $datas->user_name;
             $user = [
                 'fd' => $frame->fd,
                 'user_name' => $user_name,
                 'user_id' => strval($user_id),
             ];
             echo "有个人刚上线，数据：" . json_encode($user, JSON_UNESCAPED_UNICODE);
+
+            echo "连接池当前状态：".json_encode( $this->db->poolStats() );
+
             echo "\n";
             // 放入内存表
             $this->table->set($frame->fd, $user);
@@ -151,14 +134,22 @@ class WebSocketServer
             $user_id = explode("|", $data)[1];
             $message = explode("|", $data)[2];
 
-            $arr = $this->user_all;
-            $user_name = isset($arr[$user_id]) ? $arr[$user_id] : '';
-            if (!$user_name) {
+            $datas = $this->db->table('users')->where('id = ?', $user_id)->first();
+
+            if (!$datas) {
                 //如果用户不存在，则w我直接关闭连接。
                 echo "非法连接。用户id:" . $user_id;
                 $server->close($frame->fd);
                 return;
             }
+            $user_name = $datas->user_name;
+
+            $data = [
+                'user_id' => $user_id,
+                'message' => $message,
+            ];
+            $this->db->insert('messages', $data);
+
             echo "有人发消息，内容：" . $message;
             echo "\n";
 
