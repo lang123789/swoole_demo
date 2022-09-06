@@ -17,12 +17,12 @@ namespace App\WebSocket;
 class WebSocketServer
 {
     private $config;
-    private $table;
+    private $mysql_config;
+
+    private $table;// 这个是swoole专用的table，非数据库。
     private $server;
 
-    private $user_all;
-    private $db;
-//    private $db_help;
+    private $db;// 这是带连接池的数据库对象。
 
     public function __construct()
     {
@@ -33,8 +33,7 @@ class WebSocketServer
         $this->config = Config::getInstance();
         $this->mysql_config = Config::getInstance();
 
-        $this->user_all = $this->config['socket']['user_all'];
-
+        // v6.0
         $this->create_mysql_pool();
 
     }
@@ -46,7 +45,7 @@ class WebSocketServer
         $maxIdle = 20;        // 最大闲置连接数
         $maxLifetime = 3600;  // 连接的最长生命周期
         $waitTimeout = 0.0;   // 从池获取连接等待的时间, 0为一直等待
-        $config = $this->mysql_config['mysql'];
+        $config = $this->mysql_config['mysql']; // 读取配置文件。
         $this->db = new \Mix\Database\Database('mysql:host='. $config['host'] .';port='. $config['port']
             .';charset='. $config['charset'] .';dbname='.$config['db_name'], $config['username'], $config['password']);
 
@@ -59,6 +58,7 @@ class WebSocketServer
 
     public function run()
     {
+        // 创建 server对象，是swoole专用的。
         $this->server = new \swoole_websocket_server(
             $this->config['socket']['host'],
             $this->config['socket']['port']
@@ -146,11 +146,12 @@ class WebSocketServer
 
             $data = [
                 'user_id' => $user_id,
-                'message' => $message,
+                'content' => $message,
             ];
             $this->db->insert('messages', $data);
 
             echo "有人发消息，内容：" . $message;
+            echo "连接池当前状态：".json_encode( $this->db->poolStats() );
             echo "\n";
 
             // 通知其他人 ，进行广播
